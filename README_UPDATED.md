@@ -14,10 +14,6 @@ Quick start
 4) Run tests:
    pytest -q
 
-Continuous Integration
-
-- A GitHub Actions workflow (/.github/workflows/ci.yml) runs pytest on pull requests and pushes to main.
-
 Notes
 - This is a test/demo implementation. Replace data source with real market data before live use.
 - Keep secrets out of the repo; use .env and .env.example as templates.
