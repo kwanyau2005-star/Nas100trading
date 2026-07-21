@@ -6,10 +6,12 @@ import os
 import time
 import datetime as dt
 import pandas as pd
-import numpy as np
 import requests
 from dotenv import load_dotenv
-import minishare as ms
+try:
+    import minishare as ms
+except ImportError:
+    ms = None
 
 load_dotenv()
 
@@ -22,13 +24,21 @@ EQUITY = float(os.getenv("EQUITY", "50000"))
 RISK_PCT = float(os.getenv("RISK_PCT", "0.005"))
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "15"))
 
-if not TOKEN:
-    raise SystemExit("MINIDOC_TOKEN not set in environment")
-
 if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
     print("Warning: Telegram not fully configured (alerts will print to console)")
 
-api = ms.pro_api(TOKEN)
+api = None
+
+def get_api():
+    global api
+    if api is not None:
+        return api
+    if ms is None:
+        raise RuntimeError("minishare is not installed; please install dependencies first")
+    if not TOKEN:
+        raise RuntimeError("MINIDOC_TOKEN not set in environment")
+    api = ms.pro_api(TOKEN)
+    return api
 
 # ---- helpers: indicators ----
 def ema(series, span):
@@ -189,6 +199,7 @@ def fetch_recent_minutes(ts_code, minutes=30):
     start_s = start_dt.strftime("%Y%m%d %H:%M:%S")
     end_s = end_dt.strftime("%Y%m%d %H:%M:%S")
     try:
+        api = get_api()
         df = api.idx_mins(ts_code=ts_code, freq='1min', start_date=start_s, end_date=end_s)
         # minishare returns DataFrame with columns likely: trade_time, open, high, low, close, volume
         if df is None or df.empty:
@@ -209,6 +220,7 @@ def fetch_recent_minutes(ts_code, minutes=30):
 def fetch_recent_news(minutes=10):
     # simple pull of latest news in last N minutes
     try:
+        api = get_api()
         now = dt.datetime.utcnow()
         start = (now - dt.timedelta(minutes=minutes)).strftime("%Y-%m-%d %H:%M:%S")
         # using ms.pro_api news() with start_date/end_date; adjust format to provider
