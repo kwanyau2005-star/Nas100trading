@@ -8,6 +8,7 @@ import datetime as dt
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+from threading import Lock
 try:
     import minishare as ms
 except ImportError:
@@ -28,17 +29,21 @@ if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
     print("Warning: Telegram not fully configured (alerts will print to console)")
 
 api = None
+api_lock = Lock()
 
 def get_api():
     """Lazily create and return the minishare API client."""
     global api
     if api is not None:
         return api
-    if ms is None:
-        raise RuntimeError("minishare is not installed; please install dependencies first")
-    if not TOKEN:
-        raise RuntimeError("MINIDOC_TOKEN not set in environment")
-    api = ms.pro_api(TOKEN)
+    with api_lock:
+        if api is not None:
+            return api
+        if ms is None:
+            raise RuntimeError("minishare is not installed; run `pip install minishare`")
+        if not TOKEN:
+            raise RuntimeError("MINIDOC_TOKEN not set in environment")
+        api = ms.pro_api(TOKEN)
     return api
 
 # ---- helpers: indicators ----
