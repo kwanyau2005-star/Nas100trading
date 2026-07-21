@@ -11,9 +11,7 @@ Quick start
 3) Run demo to generate synthetic signals:
    python main.py
    - outputs signals.csv and prints summary
-4) Run tests:
-   pytest -q
-5) Run simple web preview:
+4) Run simple web preview:
    uvicorn web_app:app --host 0.0.0.0 --port 8000
    - open http://127.0.0.1:8000
 
@@ -42,7 +40,7 @@ Notes:
 
 Continuous Integration
 
-- A GitHub Actions workflow (/.github/workflows/ci.yml) runs pytest on pull requests and pushes to main.
+- Automated CI test runs are disabled. Workflow can only be triggered manually.
 
 Notes
 - This is a test/demo implementation. Replace data source with real market data before live use.
