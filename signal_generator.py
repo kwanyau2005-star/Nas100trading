@@ -99,6 +99,7 @@ class SignalGenerator:
         entry_price = None
         sl = None
         tp = None
+        hold_counter = 0
 
         for i in range(len(signals)):
             row = signals.iloc[i]
@@ -129,12 +130,16 @@ class SignalGenerator:
                 # first-touch exit using close price as proxy
                 if price <= sl:
                     exit_price = sl
+                    exit_reason = 'stop_loss'
                 elif price >= tp:
                     exit_price = tp
+                    exit_reason = 'take_profit'
                 elif row['signal'] == 0 and row['ema_fast'] < row['ema_slow']:
                     exit_price = price
+                    exit_reason = 'signal_exit'
                 elif hold_counter >= self.max_holding_bars:
                     exit_price = price
+                    exit_reason = 'timeout'
                 else:
                     continue
 
@@ -142,6 +147,8 @@ class SignalGenerator:
                 ret = pnl / entry_price
                 trades.append({'side': 'long', 'entry_idx': entry_idx, 'exit_idx': signals.index[i],
                                'entry_price': entry_price, 'exit_price': exit_price,
+                               'sl_price': sl, 'tp_price': tp,
+                               'exit_reason': exit_reason,
                                'pnl': pnl, 'return': ret})
                 position = None
                 entry_idx = None
@@ -153,12 +160,16 @@ class SignalGenerator:
                 hold_counter += 1
                 if price >= sl:
                     exit_price = sl
+                    exit_reason = 'stop_loss'
                 elif price <= tp:
                     exit_price = tp
+                    exit_reason = 'take_profit'
                 elif row['signal'] == 0 and row['ema_fast'] > row['ema_slow']:
                     exit_price = price
+                    exit_reason = 'signal_exit'
                 elif hold_counter >= self.max_holding_bars:
                     exit_price = price
+                    exit_reason = 'timeout'
                 else:
                     continue
 
@@ -166,6 +177,8 @@ class SignalGenerator:
                 ret = pnl / entry_price
                 trades.append({'side': 'short', 'entry_idx': entry_idx, 'exit_idx': signals.index[i],
                                'entry_price': entry_price, 'exit_price': exit_price,
+                               'sl_price': sl, 'tp_price': tp,
+                               'exit_reason': exit_reason,
                                'pnl': pnl, 'return': ret})
                 position = None
                 entry_idx = None

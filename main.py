@@ -9,9 +9,21 @@ from signal_generator import SignalGenerator
 def generate_synthetic_prices(n=500, start=100.0, seed=42):
     np.random.seed(seed)
     steps = np.random.normal(loc=0.0, scale=0.5, size=n)
-    price = start + np.cumsum(steps)
+    close = start + np.cumsum(steps)
+    open_ = np.concatenate(([start], close[:-1]))
+    noise = np.abs(np.random.normal(loc=0.2, scale=0.1, size=n))
+    high = np.maximum(open_, close) + noise
+    low = np.minimum(open_, close) - noise
     idx = pd.date_range(end=pd.Timestamp.now(), periods=n, freq='min')
-    return pd.DataFrame({'close': price}, index=idx)
+    return pd.DataFrame(
+        {
+            'open': open_,
+            'high': high,
+            'low': low,
+            'close': close,
+        },
+        index=idx,
+    )
 
 
 def run_demo():
