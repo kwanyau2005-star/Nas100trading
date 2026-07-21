@@ -350,7 +350,7 @@ def chart_data():
     order_flow = _compute_order_flow(chart)
     volume_vals = chart["volume"].astype(float).tolist()
     volume_colors = [
-        "#71ffad" if c >= o else "#2f8f5b"
+        "#39ff14" if c >= o else "#1f9e3a"
         for o, c in zip(chart["open"].tolist(), chart["close"].tolist())
     ]
 
@@ -464,10 +464,10 @@ def home():
             font-family: Inter, Segoe UI, Arial, sans-serif;
             margin: 16px;
             background: radial-gradient(circle at 15% 10%, #0d1a12 0%, #050706 42%, #020303 100%);
-            color: #ccffd8;
+            color: #d8ffd0;
           }
-          h1, h2 { margin-bottom: 8px; color: #8dffb2; text-shadow: 0 0 8px rgba(111, 255, 168, 0.35); letter-spacing: 0.4px; }
-          p { color: #6fd9a0; }
+          h1, h2 { margin-bottom: 8px; color: #39ff14; text-shadow: 0 0 10px rgba(57, 255, 20, 0.45); letter-spacing: 0.4px; }
+          p { color: #7dff57; }
           .cards { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
           .card {
             border: 1px solid #1f5d3a; border-radius: 10px; padding: 10px 14px; min-width: 160px;
@@ -482,11 +482,11 @@ def home():
           .chart-mid { width: 100%; height: 200px; margin-top: 10px; }
           .chart-small { width: 100%; height: 190px; margin-top: 10px; }
           table { border-collapse: collapse; width: 100%; margin-top: 8px; background: #070d0a; border: 1px solid #1f5d3a; }
-          th, td { border: 1px solid #163927; padding: 6px 8px; text-align: right; color: #b4f7ce; }
-          th { background: #0a1310; color: #7dffae; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+          th, td { border: 1px solid #163927; padding: 6px 8px; text-align: right; color: #d8ffd0; }
+          th { background: #0a1310; color: #39ff14; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
           th:first-child, td:first-child { text-align: left; }
           .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; border:1px solid #225e3d; background: rgba(4, 24, 12, 0.75); }
-          .tag-live { color:#6fffaa; border-color:#2e8a57; box-shadow: 0 0 10px rgba(82, 255, 145, 0.25); }
+          .tag-live { color:#39ff14; border-color:#39ff14; box-shadow: 0 0 12px rgba(57, 255, 20, 0.35); }
           .tag-fallback { color:#d4ffe6; border-color:#2f6b4a; }
         </style>
       </head>
@@ -557,27 +557,27 @@ def home():
               {
                 x, open: data.candles.open, high: data.candles.high, low: data.candles.low, close: data.candles.close,
                 type: 'candlestick', name: 'K線',
-                increasing: { line: { color: '#71ffad', width: 1.2 }, fillcolor: '#71ffad' },
-                decreasing: { line: { color: '#2f8f5b', width: 1.1 }, fillcolor: '#2f8f5b' }
+                increasing: { line: { color: '#39ff14', width: 1.2 }, fillcolor: '#39ff14' },
+                decreasing: { line: { color: '#1f9e3a', width: 1.1 }, fillcolor: '#1f9e3a' }
               },
-              { x, y: data.indicators.ema_fast, type: 'scatter', mode: 'lines', line: { width: 1.5, color: '#8dffb2' }, name: 'EMA Fast' },
-              { x, y: data.indicators.ema_slow, type: 'scatter', mode: 'lines', line: { width: 1.3, color: '#3ecf8e' }, name: 'EMA Slow' },
-              { x: data.entries.long.x, y: data.entries.long.y, type: 'scatter', mode: 'markers', marker: { color: '#22c55e', size: 9, symbol: 'triangle-up' }, name: 'Long Entry' },
-              { x: data.entries.short.x, y: data.entries.short.y, type: 'scatter', mode: 'markers', marker: { color: '#2f8f5b', size: 9, symbol: 'triangle-down' }, name: 'Short Entry' },
+              { x, y: data.indicators.ema_fast, type: 'scatter', mode: 'lines', line: { width: 1.5, color: '#39ff14' }, name: 'EMA Fast' },
+              { x, y: data.indicators.ema_slow, type: 'scatter', mode: 'lines', line: { width: 1.3, color: '#28c446' }, name: 'EMA Slow' },
+              { x: data.entries.long.x, y: data.entries.long.y, type: 'scatter', mode: 'markers', marker: { color: '#39ff14', size: 9, symbol: 'triangle-up' }, name: 'Long Entry' },
+              { x: data.entries.short.x, y: data.entries.short.y, type: 'scatter', mode: 'markers', marker: { color: '#1f9e3a', size: 9, symbol: 'triangle-down' }, name: 'Short Entry' },
               { x: data.exits.x, y: data.exits.y, type: 'scatter', mode: 'markers', marker: { color: '#e5e7eb', size: 8, symbol: 'x' }, name: 'Exit' },
-              { x: [x[0], x[x.length - 1]], y: pocLine, type: 'scatter', mode: 'lines', line: { color: '#9effc1', width: 1.2 }, name: 'POC' },
-              { x: [x[0], x[x.length - 1]], y: hvlLine, type: 'scatter', mode: 'lines', line: { color: '#66d698', width: 1, dash: 'dash' }, name: 'HVL' },
-              { x: [x[0], x[x.length - 1]], y: lvlLine, type: 'scatter', mode: 'lines', line: { color: '#66d698', width: 1, dash: 'dash' }, name: 'LVL' },
-              { x: data.risk_lines.sl_x, y: data.risk_lines.sl_y, type: 'scatter', mode: 'lines', line: { color: '#66d698', width: 1, dash: 'dot' }, name: 'SL', visible: 'legendonly' },
-              { x: data.risk_lines.tp_x, y: data.risk_lines.tp_y, type: 'scatter', mode: 'lines', line: { color: '#8dffb2', width: 1, dash: 'dot' }, name: 'TP', visible: 'legendonly' }
+              { x: [x[0], x[x.length - 1]], y: pocLine, type: 'scatter', mode: 'lines', line: { color: '#39ff14', width: 1.2 }, name: 'POC' },
+              { x: [x[0], x[x.length - 1]], y: hvlLine, type: 'scatter', mode: 'lines', line: { color: '#2fd65a', width: 1, dash: 'dash' }, name: 'HVL' },
+              { x: [x[0], x[x.length - 1]], y: lvlLine, type: 'scatter', mode: 'lines', line: { color: '#2fd65a', width: 1, dash: 'dash' }, name: 'LVL' },
+              { x: data.risk_lines.sl_x, y: data.risk_lines.sl_y, type: 'scatter', mode: 'lines', line: { color: '#2fd65a', width: 1, dash: 'dot' }, name: 'SL', visible: 'legendonly' },
+              { x: data.risk_lines.tp_x, y: data.risk_lines.tp_y, type: 'scatter', mode: 'lines', line: { color: '#39ff14', width: 1, dash: 'dot' }, name: 'TP', visible: 'legendonly' }
             ];
 
             Plotly.react('klineChart', klineTraces, {
               template: 'plotly_dark', uirevision: 'kline-fixed', paper_bgcolor: '#070d0a', plot_bgcolor: '#070d0a',
               margin: { t: 18, r: 56, b: 28, l: 46 }, hovermode: 'x', dragmode: 'pan',
-              xaxis: { type: 'date', rangeslider: { visible: false }, showgrid: true, gridcolor: '#103321', color: '#73d9a5', tickformat: '%m-%d %H:%M', showspikes: true, spikemode: 'across', spikecolor: '#4fb97e', spikethickness: 1 },
-              yaxis: { title: 'Price', side: 'right', showgrid: true, gridcolor: '#103321', color: '#73d9a5', showspikes: true, spikemode: 'across', spikecolor: '#4fb97e', spikethickness: 1 },
-              legend: { orientation: 'h', y: 1.04, font: { color: '#9cf7c3' } }
+              xaxis: { type: 'date', rangeslider: { visible: false }, showgrid: true, gridcolor: '#103321', color: '#67ff5a', tickformat: '%m-%d %H:%M', showspikes: true, spikemode: 'across', spikecolor: '#39ff14', spikethickness: 1 },
+              yaxis: { title: 'Price', side: 'right', showgrid: true, gridcolor: '#103321', color: '#67ff5a', showspikes: true, spikemode: 'across', spikecolor: '#39ff14', spikethickness: 1 },
+              legend: { orientation: 'h', y: 1.04, font: { color: '#a9ff85' } }
             }, { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines'] });
 
             Plotly.react('volumeChart', [{
@@ -585,36 +585,36 @@ def home():
             }], {
               template: 'plotly_dark', uirevision: 'vol-fixed', paper_bgcolor: '#070d0a', plot_bgcolor: '#070d0a',
               margin: { t: 10, r: 56, b: 20, l: 46 }, hovermode: 'x',
-              xaxis: { type: 'date', showgrid: true, gridcolor: '#103321', color: '#73d9a5' },
-              yaxis: { title: 'Volume', side: 'right', gridcolor: '#103321', color: '#73d9a5' },
+              xaxis: { type: 'date', showgrid: true, gridcolor: '#103321', color: '#67ff5a' },
+              yaxis: { title: 'Volume', side: 'right', gridcolor: '#103321', color: '#67ff5a' },
               showlegend: false
             }, { responsive: true, displaylogo: false });
 
             Plotly.react('rsiChart', [{
-              x, y: data.indicators.rsi, type: 'scatter', mode: 'lines', line: { width: 1.5, color: '#6dff9f' }, name: 'RSI'
+              x, y: data.indicators.rsi, type: 'scatter', mode: 'lines', line: { width: 1.5, color: '#39ff14' }, name: 'RSI'
             }], {
               template: 'plotly_dark', uirevision: 'rsi-fixed', paper_bgcolor: '#070d0a', plot_bgcolor: '#070d0a',
               margin: { t: 10, r: 56, b: 20, l: 46 }, hovermode: 'x',
-              yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#103321', color: '#73d9a5' },
-              xaxis: { type: 'date', tickformat: '%H:%M', gridcolor: '#103321', color: '#73d9a5' },
+              yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#103321', color: '#67ff5a' },
+              xaxis: { type: 'date', tickformat: '%H:%M', gridcolor: '#103321', color: '#67ff5a' },
               shapes: [
-                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#3f9b66', dash: 'dash' } },
-                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#8dffb2', dash: 'dash' } }
+                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#1f9e3a', dash: 'dash' } },
+                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#39ff14', dash: 'dash' } }
               ],
               showlegend: false
             }, { responsive: true, displaylogo: false });
 
-            const deltaColors = data.order_flow.delta.map(v => v >= 0 ? '#71ffad' : '#2f8f5b');
+            const deltaColors = data.order_flow.delta.map(v => v >= 0 ? '#39ff14' : '#1f9e3a');
             Plotly.react('orderFlowChart', [
               { x, y: data.order_flow.delta, type: 'bar', marker: { color: deltaColors }, name: 'Delta' },
-              { x, y: data.order_flow.cvd, type: 'scatter', mode: 'lines', yaxis: 'y2', line: { color: '#b4ffcf', width: 1.3 }, name: 'CVD' }
+              { x, y: data.order_flow.cvd, type: 'scatter', mode: 'lines', yaxis: 'y2', line: { color: '#a9ff85', width: 1.3 }, name: 'CVD' }
             ], {
               template: 'plotly_dark', uirevision: 'flow-fixed', paper_bgcolor: '#070d0a', plot_bgcolor: '#070d0a',
               margin: { t: 10, r: 56, b: 40, l: 46 }, hovermode: 'x',
-              xaxis: { type: 'date', tickformat: '%H:%M', gridcolor: '#103321', color: '#73d9a5' },
-              yaxis: { title: 'Delta', side: 'right', gridcolor: '#103321', color: '#73d9a5' },
-              yaxis2: { title: 'CVD', overlaying: 'y', side: 'left', color: '#9cf7c3' },
-              legend: { orientation: 'h', y: 1.02, font: { color: '#9cf7c3' } }
+              xaxis: { type: 'date', tickformat: '%H:%M', gridcolor: '#103321', color: '#67ff5a' },
+              yaxis: { title: 'Delta', side: 'right', gridcolor: '#103321', color: '#67ff5a' },
+              yaxis2: { title: 'CVD', overlaying: 'y', side: 'left', color: '#a9ff85' },
+              legend: { orientation: 'h', y: 1.02, font: { color: '#a9ff85' } }
             }, { responsive: true, displaylogo: false });
 
             const signalBody = document.getElementById('signalTable');
