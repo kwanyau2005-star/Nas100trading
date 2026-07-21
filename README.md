@@ -13,6 +13,9 @@ Quick start
    - outputs signals.csv and prints summary
 4) Run tests:
    pytest -q
+5) Run simple web preview:
+   uvicorn web_app:app --host 0.0.0.0 --port 8000
+   - open http://127.0.0.1:8000
 
 Continuous Integration
 
