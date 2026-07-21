@@ -67,6 +67,10 @@ def _parse_timestamp(raw: Any) -> pd.Timestamp:
     return pd.to_datetime(raw, utc=True).tz_convert(None)
 
 
+def _fmt_ts(raw: Any) -> str:
+    return pd.to_datetime(raw).strftime("%Y-%m-%d %H:%M")
+
+
 def _normalize_records(records: list[Any]) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for item in records:
@@ -272,16 +276,18 @@ def chart_data():
     summary, signals, trades = _build_snapshot()
 
     chart = signals.tail(180).copy()
+    chart_x = [_fmt_ts(ts) for ts in chart.index]
     latest = chart[["close", "ema_fast", "ema_slow", "rsi", "atr", "signal"]].tail(20)
-    entry_long = chart[chart["signal"] == 1]
-    entry_short = chart[chart["signal"] == -1]
 
     trade_records = []
+    entry_long_x, entry_long_y = [], []
+    entry_short_x, entry_short_y = [], []
+    exit_x, exit_y = [], []
     sl_x, sl_y, tp_x, tp_y = [], [], [], []
     if not trades.empty:
-        for _, row in trades.tail(40).iterrows():
-            entry_ts = str(row["entry_idx"])
-            exit_ts = str(row["exit_idx"])
+        for _, row in trades.tail(20).iterrows():
+            entry_ts = _fmt_ts(row["entry_idx"])
+            exit_ts = _fmt_ts(row["exit_idx"])
             trade_records.append(
                 {
                     "side": row["side"],
@@ -296,6 +302,14 @@ def chart_data():
                     "return": float(row["return"]),
                 }
             )
+            if row["side"] == "long":
+                entry_long_x.append(entry_ts)
+                entry_long_y.append(float(row["entry_price"]))
+            else:
+                entry_short_x.append(entry_ts)
+                entry_short_y.append(float(row["entry_price"]))
+            exit_x.append(exit_ts)
+            exit_y.append(float(row["exit_price"]))
             sl_x.extend([entry_ts, exit_ts, None])
             sl_y.extend([float(row["sl_price"]), float(row["sl_price"]), None])
             tp_x.extend([entry_ts, exit_ts, None])
@@ -305,7 +319,7 @@ def chart_data():
         {
             "summary": summary,
             "candles": {
-                "x": chart.index.astype(str).tolist(),
+                "x": chart_x,
                 "open": chart["open"].astype(float).tolist(),
                 "high": chart["high"].astype(float).tolist(),
                 "low": chart["low"].astype(float).tolist(),
@@ -318,17 +332,17 @@ def chart_data():
             },
             "entries": {
                 "long": {
-                    "x": entry_long.index.astype(str).tolist(),
-                    "y": entry_long["close"].astype(float).tolist(),
+                    "x": entry_long_x,
+                    "y": entry_long_y,
                 },
                 "short": {
-                    "x": entry_short.index.astype(str).tolist(),
-                    "y": entry_short["close"].astype(float).tolist(),
+                    "x": entry_short_x,
+                    "y": entry_short_y,
                 },
             },
             "exits": {
-                "x": [t["exit_idx"] for t in trade_records],
-                "y": [t["exit_price"] for t in trade_records],
+                "x": exit_x,
+                "y": exit_y,
             },
             "risk_lines": {
                 "sl_x": sl_x,
@@ -338,7 +352,7 @@ def chart_data():
             },
             "latest_rows": [
                 {
-                    "time": str(idx),
+                    "time": _fmt_ts(idx),
                     "close": float(row["close"]),
                     "ema_fast": float(row["ema_fast"]),
                     "ema_slow": float(row["ema_slow"]),
@@ -501,7 +515,8 @@ def home():
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#f87171', width: 1, dash: 'dot' },
-                name: 'SL'
+                name: 'SL',
+                visible: 'legendonly'
               },
               {
                 x: data.risk_lines.tp_x,
@@ -509,22 +524,26 @@ def home():
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#34d399', width: 1, dash: 'dot' },
-                name: 'TP'
+                name: 'TP',
+                visible: 'legendonly'
               }
             ];
 
             Plotly.react('klineChart', traces, {
               template: 'plotly_dark',
+              uirevision: 'kline-fixed',
               paper_bgcolor: '#111827',
               plot_bgcolor: '#111827',
               margin: { t: 18, r: 56, b: 28, l: 46 },
               hovermode: 'x',
               dragmode: 'pan',
               xaxis: {
+                type: 'date',
                 rangeslider: { visible: false },
                 showgrid: true,
                 gridcolor: '#1f2937',
                 color: '#9ca3af',
+                tickformat: '%m-%d %H:%M',
                 showspikes: true,
                 spikemode: 'across',
                 spikecolor: '#6b7280',
@@ -558,12 +577,13 @@ def home():
               name: 'RSI'
             }], {
               template: 'plotly_dark',
+              uirevision: 'rsi-fixed',
               paper_bgcolor: '#111827',
               plot_bgcolor: '#111827',
               margin: { t: 10, r: 56, b: 40, l: 46 },
               hovermode: 'x',
               yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#1f2937', color: '#9ca3af' },
-              xaxis: { title: 'Time', gridcolor: '#1f2937', color: '#9ca3af' },
+              xaxis: { title: 'Time', type: 'date', tickformat: '%H:%M', gridcolor: '#1f2937', color: '#9ca3af' },
               shapes: [
                 { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#f97316', dash: 'dash' } },
                 { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#22c55e', dash: 'dash' } }

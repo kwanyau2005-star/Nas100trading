@@ -14,7 +14,7 @@ def generate_synthetic_prices(n=500, start=100.0, seed=42):
     noise = np.abs(np.random.normal(loc=0.2, scale=0.1, size=n))
     high = np.maximum(open_, close) + noise
     low = np.minimum(open_, close) - noise
-    idx = pd.date_range(end=pd.Timestamp.now(), periods=n, freq='min')
+    idx = pd.date_range(end=pd.Timestamp.now().floor("min"), periods=n, freq='min')
     return pd.DataFrame(
         {
             'open': open_,
