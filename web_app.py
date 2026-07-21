@@ -141,14 +141,17 @@ def home():
         <title>NAS100 Scalping Demo</title>
         <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
         <style>
-          body { font-family: Arial, sans-serif; margin: 24px; }
-          h1, h2 { margin-bottom: 8px; }
-          .cards { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-          .card { border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; min-width: 180px; }
-          .chart { width: 100%; height: 500px; margin-top: 10px; }
+          body { font-family: Inter, Segoe UI, Arial, sans-serif; margin: 16px; background: #0b1220; color: #d1d5db; }
+          h1, h2 { margin-bottom: 8px; color: #e5e7eb; }
+          p { color: #9ca3af; }
+          .cards { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+          .card { border: 1px solid #1f2937; border-radius: 8px; padding: 10px 14px; min-width: 170px; background: #111827; }
+          .chart-wrap { border: 1px solid #1f2937; border-radius: 8px; background: #111827; padding: 8px; }
+          .chart { width: 100%; height: 560px; margin-top: 6px; }
           .chart-small { width: 100%; height: 220px; margin-top: 10px; }
-          table { border-collapse: collapse; width: 100%; margin-top: 8px; }
-          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: right; }
+          table { border-collapse: collapse; width: 100%; margin-top: 8px; background: #0f172a; }
+          th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: right; color: #d1d5db; }
+          th { background: #111827; color: #e5e7eb; }
           th:first-child, td:first-child { text-align: left; }
         </style>
       </head>
@@ -163,8 +166,10 @@ def home():
           <div class="card"><b>Win rate</b><br><span id="winRate">-</span></div>
           <div class="card"><b>Avg return</b><br><span id="avgReturn">-</span></div>
         </div>
-        <div id="klineChart" class="chart"></div>
-        <div id="rsiChart" class="chart-small"></div>
+        <div class="chart-wrap">
+          <div id="klineChart" class="chart"></div>
+          <div id="rsiChart" class="chart-small"></div>
+        </div>
 
         <h2>Latest Signals</h2>
         <table>
@@ -211,14 +216,16 @@ def home():
                 low: data.candles.low,
                 close: data.candles.close,
                 type: 'candlestick',
-                name: 'K線'
+                name: 'K線',
+                increasing: { line: { color: '#22c55e', width: 1 }, fillcolor: '#22c55e' },
+                decreasing: { line: { color: '#ef4444', width: 1 }, fillcolor: '#ef4444' }
               },
               {
                 x,
                 y: data.indicators.ema_fast,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 1.5, color: '#3b82f6' },
+                line: { width: 1.4, color: '#60a5fa' },
                 name: 'EMA Fast'
               },
               {
@@ -226,7 +233,7 @@ def home():
                 y: data.indicators.ema_slow,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 1.5, color: '#f59e0b' },
+                line: { width: 1.4, color: '#fbbf24' },
                 name: 'EMA Slow'
               },
               {
@@ -234,7 +241,7 @@ def home():
                 y: data.entries.long.y,
                 type: 'scatter',
                 mode: 'markers',
-                marker: { color: '#16a34a', size: 8, symbol: 'triangle-up' },
+                marker: { color: '#22c55e', size: 9, symbol: 'triangle-up' },
                 name: 'Long Entry'
               },
               {
@@ -242,7 +249,7 @@ def home():
                 y: data.entries.short.y,
                 type: 'scatter',
                 mode: 'markers',
-                marker: { color: '#dc2626', size: 8, symbol: 'triangle-down' },
+                marker: { color: '#ef4444', size: 9, symbol: 'triangle-down' },
                 name: 'Short Entry'
               },
               {
@@ -250,7 +257,7 @@ def home():
                 y: data.exits.y,
                 type: 'scatter',
                 mode: 'markers',
-                marker: { color: '#111827', size: 7, symbol: 'x' },
+                marker: { color: '#e5e7eb', size: 8, symbol: 'x' },
                 name: 'Exit'
               },
               {
@@ -258,7 +265,7 @@ def home():
                 y: data.risk_lines.sl_y,
                 type: 'scatter',
                 mode: 'lines',
-                line: { color: '#ef4444', width: 1, dash: 'dot' },
+                line: { color: '#f87171', width: 1, dash: 'dot' },
                 name: 'SL'
               },
               {
@@ -266,35 +273,68 @@ def home():
                 y: data.risk_lines.tp_y,
                 type: 'scatter',
                 mode: 'lines',
-                line: { color: '#10b981', width: 1, dash: 'dot' },
+                line: { color: '#34d399', width: 1, dash: 'dot' },
                 name: 'TP'
               }
             ];
 
             Plotly.react('klineChart', traces, {
-              margin: { t: 20, r: 20, b: 40, l: 50 },
-              xaxis: { rangeslider: { visible: false } },
-              yaxis: { title: 'Price' },
-              legend: { orientation: 'h' }
-            }, { responsive: true });
+              template: 'plotly_dark',
+              paper_bgcolor: '#111827',
+              plot_bgcolor: '#111827',
+              margin: { t: 18, r: 56, b: 28, l: 46 },
+              hovermode: 'x',
+              dragmode: 'pan',
+              xaxis: {
+                rangeslider: { visible: false },
+                showgrid: true,
+                gridcolor: '#1f2937',
+                color: '#9ca3af',
+                showspikes: true,
+                spikemode: 'across',
+                spikecolor: '#6b7280',
+                spikethickness: 1
+              },
+              yaxis: {
+                title: 'Price',
+                side: 'right',
+                showgrid: true,
+                gridcolor: '#1f2937',
+                color: '#9ca3af',
+                showspikes: true,
+                spikemode: 'across',
+                spikecolor: '#6b7280',
+                spikethickness: 1
+              },
+              legend: { orientation: 'h', y: 1.04, font: { color: '#cbd5e1' } }
+            }, {
+              responsive: true,
+              displaylogo: false,
+              scrollZoom: true,
+              modeBarButtonsToRemove: ['select2d', 'lasso2d', 'toggleSpikelines']
+            });
 
             Plotly.react('rsiChart', [{
               x,
               y: data.indicators.rsi,
               type: 'scatter',
               mode: 'lines',
-              line: { width: 1.5, color: '#8b5cf6' },
+              line: { width: 1.5, color: '#a78bfa' },
               name: 'RSI'
             }], {
-              margin: { t: 10, r: 20, b: 40, l: 50 },
-              yaxis: { title: 'RSI', range: [0, 100] },
-              xaxis: { title: 'Time' },
+              template: 'plotly_dark',
+              paper_bgcolor: '#111827',
+              plot_bgcolor: '#111827',
+              margin: { t: 10, r: 56, b: 40, l: 46 },
+              hovermode: 'x',
+              yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#1f2937', color: '#9ca3af' },
+              xaxis: { title: 'Time', gridcolor: '#1f2937', color: '#9ca3af' },
               shapes: [
                 { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#f97316', dash: 'dash' } },
                 { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#22c55e', dash: 'dash' } }
               ],
               showlegend: false
-            }, { responsive: true });
+            }, { responsive: true, displaylogo: false });
 
             const signalBody = document.getElementById('signalTable');
             signalBody.innerHTML = data.latest_rows.map(r =>
