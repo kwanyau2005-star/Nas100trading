@@ -1,3 +1,11 @@
+import json
+import os
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+import pandas as pd
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -7,7 +15,21 @@ from signal_generator import SignalGenerator
 app = FastAPI(title="NAS100 Scalping Demo")
 
 
-def _ensure_ohlc(df):
+def _env_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None or val.strip() == "":
+        return default
+    return int(val)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _ensure_ohlc(df: pd.DataFrame) -> pd.DataFrame:
     required = {"open", "high", "low", "close"}
     if required.issubset(set(df.columns)):
         return df
@@ -20,8 +42,123 @@ def _ensure_ohlc(df):
     return out
 
 
+def _extract_records(payload: Any) -> list[Any]:
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        raise ValueError("Unsupported minishare payload type")
+
+    for key in ("data", "bars", "candles", "result", "items"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            for sub_key in ("bars", "candles", "items", "data"):
+                sub_value = value.get(sub_key)
+                if isinstance(sub_value, list):
+                    return sub_value
+    raise ValueError("No candles list found in minishare payload")
+
+
+def _parse_timestamp(raw: Any) -> pd.Timestamp:
+    if isinstance(raw, (int, float)):
+        # ms timestamp vs sec timestamp
+        unit = "ms" if raw > 1_000_000_000_000 else "s"
+        return pd.to_datetime(raw, unit=unit, utc=True).tz_convert(None)
+    return pd.to_datetime(raw, utc=True).tz_convert(None)
+
+
+def _normalize_records(records: list[Any]) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for item in records:
+        if isinstance(item, (list, tuple)) and len(item) >= 5:
+            ts, o, h, l, c = item[0], item[1], item[2], item[3], item[4]
+            rows.append(
+                {
+                    "time": _parse_timestamp(ts),
+                    "open": float(o),
+                    "high": float(h),
+                    "low": float(l),
+                    "close": float(c),
+                }
+            )
+            continue
+        if isinstance(item, dict):
+            ts = item.get("time", item.get("timestamp", item.get("ts")))
+            o = item.get("open", item.get("o"))
+            h = item.get("high", item.get("h"))
+            l = item.get("low", item.get("l"))
+            c = item.get("close", item.get("c", item.get("price")))
+            if ts is None or c is None:
+                continue
+            close_val = float(c)
+            open_val = close_val if o is None else float(o)
+            high_val = max(open_val, close_val) if h is None else float(h)
+            low_val = min(open_val, close_val) if l is None else float(l)
+            rows.append(
+                {
+                    "time": _parse_timestamp(ts),
+                    "open": open_val,
+                    "high": high_val,
+                    "low": low_val,
+                    "close": close_val,
+                }
+            )
+    if not rows:
+        raise ValueError("No valid OHLC rows parsed from minishare payload")
+    df = pd.DataFrame(rows).dropna()
+    df = df.sort_values("time").drop_duplicates(subset=["time"], keep="last")
+    return df.set_index("time")
+
+
+def _fetch_minishare_ohlc() -> tuple[pd.DataFrame, dict[str, str]]:
+    base_url = os.getenv("MINISHARE_BASE_URL", "").strip().rstrip("/")
+    token = os.getenv("MINISHARE_TOKEN", "").strip()
+    if not base_url:
+        raise ValueError("MINISHARE_BASE_URL is not set")
+    if not token:
+        raise ValueError("MINISHARE_TOKEN is not set")
+
+    symbol = os.getenv("MINISHARE_SYMBOL", "QQQ.US")
+    interval = os.getenv("MINISHARE_INTERVAL", "1m")
+    limit = _env_int("MINISHARE_LIMIT", 400)
+    path = os.getenv("MINISHARE_BARS_PATH", "/api/v1/market/bars")
+    query = urlencode({"symbol": symbol, "interval": interval, "limit": limit})
+    url = f"{base_url}{path}?{query}"
+
+    request = Request(
+        url=url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-API-Key": token,
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+
+    with urlopen(request, timeout=10) as response:
+        body = response.read().decode("utf-8")
+    payload = json.loads(body)
+    records = _extract_records(payload)
+    df = _normalize_records(records)
+    return df, {"source": "minishare", "symbol": symbol, "interval": interval}
+
+
 def _build_snapshot():
-    df = generate_synthetic_prices(n=400)
+    source_info = {"source": "demo", "symbol": "QQQ.US", "interval": "1m", "message": ""}
+    use_live = _env_bool("USE_LIVE_DATA", True)
+
+    if use_live:
+        try:
+            df, meta = _fetch_minishare_ohlc()
+            source_info.update(meta)
+        except (HTTPError, URLError, json.JSONDecodeError, ValueError, TypeError) as err:
+            df = generate_synthetic_prices(n=400)
+            source_info["source"] = "demo-fallback"
+            source_info["message"] = str(err)
+    else:
+        df = generate_synthetic_prices(n=400)
+
     sg = SignalGenerator(
         ema_fast=5,
         ema_slow=20,
@@ -43,6 +180,11 @@ def _build_snapshot():
         "total_pnl": 0.0 if trades.empty else float(trades["pnl"].sum()),
         "win_rate": 0.0 if trades.empty else float((trades["pnl"] > 0).mean()),
         "avg_return": 0.0 if trades.empty else float(trades["return"].mean()),
+        "current_price": float(signals["close"].iloc[-1]),
+        "data_source": source_info["source"],
+        "symbol": source_info["symbol"],
+        "interval": source_info["interval"],
+        "source_message": source_info["message"],
     }
     return summary, signals, trades
 
@@ -153,12 +295,17 @@ def home():
           th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: right; color: #d1d5db; }
           th { background: #111827; color: #e5e7eb; }
           th:first-child, td:first-child { text-align: left; }
+          .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; border:1px solid #334155; }
+          .tag-live { color:#34d399; border-color:#065f46; }
+          .tag-fallback { color:#fbbf24; border-color:#92400e; }
         </style>
       </head>
       <body>
         <h1>NAS100 (QQQ) Scalping Demo</h1>
         <p>OHLC K線 + EMA 指標 + 入場/離場 + 止損/止盈（每 10 秒更新）</p>
         <div class="cards">
+          <div class="card"><b>Data source</b><br><span id="sourceTag" class="tag">-</span></div>
+          <div class="card"><b>Current price</b><br><span id="currentPrice">-</span></div>
           <div class="card"><b>Long entries</b><br><span id="longEntries">-</span></div>
           <div class="card"><b>Short entries</b><br><span id="shortEntries">-</span></div>
           <div class="card"><b>Trades</b><br><span id="tradeCount">-</span></div>
@@ -166,6 +313,7 @@ def home():
           <div class="card"><b>Win rate</b><br><span id="winRate">-</span></div>
           <div class="card"><b>Avg return</b><br><span id="avgReturn">-</span></div>
         </div>
+        <div id="sourceMessage" style="margin-bottom:8px;color:#fca5a5;"></div>
         <div class="chart-wrap">
           <div id="klineChart" class="chart"></div>
           <div id="rsiChart" class="chart-small"></div>
@@ -200,6 +348,13 @@ def home():
             const data = await res.json();
 
             const s = data.summary;
+            const sourceTag = document.getElementById('sourceTag');
+            const sourceLabel = `${s.data_source} (${s.symbol}, ${s.interval})`;
+            sourceTag.innerText = sourceLabel;
+            sourceTag.className = "tag " + (s.data_source === "minishare" ? "tag-live" : "tag-fallback");
+            document.getElementById('sourceMessage').innerText = s.source_message || "";
+
+            document.getElementById('currentPrice').innerText = toFixed(s.current_price, 4);
             document.getElementById('longEntries').innerText = s.long_entries;
             document.getElementById('shortEntries').innerText = s.short_entries;
             document.getElementById('tradeCount').innerText = s.trades;
