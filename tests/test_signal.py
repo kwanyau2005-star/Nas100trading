@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from signal import SignalGenerator
+from signal_generator import SignalGenerator
 
 
 def test_signal_on_uptrend():

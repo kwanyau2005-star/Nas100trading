@@ -3,7 +3,7 @@ Generates synthetic price data, runs the signal generator, runs a simple backtes
 """
 import pandas as pd
 import numpy as np
-from signal import SignalGenerator
+from signal_generator import SignalGenerator
 
 
 def generate_synthetic_prices(n=500, start=100.0, seed=42):
