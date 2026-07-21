@@ -503,6 +503,37 @@ def home():
             document.getElementById('sourceMessage').innerText = s.source_message || "";
 
             const x = data.candles.x;
+            const entryAnnotations = [
+              ...data.entries.long.x.map((xv, i) => ({
+                x: xv,
+                y: data.entries.long.y[i],
+                text: 'ENTRY-L',
+                showarrow: true,
+                arrowhead: 2,
+                ax: 0,
+                ay: -20,
+                arrowcolor: '#39ff14',
+                font: { color: '#39ff14', size: 10 },
+                bgcolor: 'rgba(8, 25, 12, 0.92)',
+                bordercolor: '#39ff14',
+                borderwidth: 1
+              })),
+              ...data.entries.short.x.map((xv, i) => ({
+                x: xv,
+                y: data.entries.short.y[i],
+                text: 'ENTRY-S',
+                showarrow: true,
+                arrowhead: 2,
+                ax: 0,
+                ay: 20,
+                arrowcolor: '#1f9e3a',
+                font: { color: '#8ee06d', size: 10 },
+                bgcolor: 'rgba(8, 25, 12, 0.92)',
+                bordercolor: '#1f9e3a',
+                borderwidth: 1
+              }))
+            ];
+
             const traces = [
               {
                 x, open: data.candles.open, high: data.candles.high, low: data.candles.low, close: data.candles.close,
@@ -511,19 +542,13 @@ def home():
                 decreasing: { line: { color: '#1f9e3a', width: 1.1 }, fillcolor: '#1f9e3a' }
               },
               {
-                x: data.entries.long.x, y: data.entries.long.y, type: 'scatter', mode: 'markers+text',
-                marker: { color: '#39ff14', size: 13, symbol: 'triangle-up' },
-                text: data.entries.long.x.map(_ => 'BUY'),
-                textposition: 'top center',
-                textfont: { color: '#b8ff7f', size: 10 },
+                x: data.entries.long.x, y: data.entries.long.y, type: 'scatter', mode: 'markers',
+                marker: { color: '#39ff14', size: 14, symbol: 'diamond', line: { color: '#d5ffd3', width: 1.2 } },
                 name: 'Entry Long'
               },
               {
-                x: data.entries.short.x, y: data.entries.short.y, type: 'scatter', mode: 'markers+text',
-                marker: { color: '#1f9e3a', size: 13, symbol: 'triangle-down' },
-                text: data.entries.short.x.map(_ => 'SELL'),
-                textposition: 'bottom center',
-                textfont: { color: '#8ee06d', size: 10 },
+                x: data.entries.short.x, y: data.entries.short.y, type: 'scatter', mode: 'markers',
+                marker: { color: '#1f9e3a', size: 14, symbol: 'square', line: { color: '#d5ffd3', width: 1.2 } },
                 name: 'Entry Short'
               },
               {
@@ -567,7 +592,8 @@ def home():
                 spikecolor: '#39ff14',
                 spikethickness: 1
               },
-              legend: { orientation: 'h', y: 1.05, font: { color: '#a9ff85' } }
+              legend: { orientation: 'h', y: 1.05, font: { color: '#a9ff85' } },
+              annotations: entryAnnotations
             }, {
               responsive: true,
               displaylogo: false,
