@@ -375,21 +375,63 @@ def home():
         <title>NAS100 Scalping Demo</title>
         <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
         <style>
-          body { font-family: Inter, Segoe UI, Arial, sans-serif; margin: 16px; background: #0b1220; color: #d1d5db; }
-          h1, h2 { margin-bottom: 8px; color: #e5e7eb; }
-          p { color: #9ca3af; }
+          body {
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+            margin: 16px;
+            background: radial-gradient(circle at 15% 10%, #0d1a12 0%, #050706 42%, #020303 100%);
+            color: #ccffd8;
+          }
+          h1, h2 {
+            margin-bottom: 8px;
+            color: #8dffb2;
+            text-shadow: 0 0 8px rgba(111, 255, 168, 0.35);
+            letter-spacing: 0.4px;
+          }
+          p { color: #6fd9a0; }
           .cards { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-          .card { border: 1px solid #1f2937; border-radius: 8px; padding: 10px 14px; min-width: 170px; background: #111827; }
-          .chart-wrap { border: 1px solid #1f2937; border-radius: 8px; background: #111827; padding: 8px; }
+          .card {
+            border: 1px solid #1f5d3a;
+            border-radius: 10px;
+            padding: 10px 14px;
+            min-width: 170px;
+            background: linear-gradient(180deg, #0d1511 0%, #09100d 100%);
+            box-shadow: inset 0 0 0 1px rgba(137, 255, 180, 0.08), 0 0 14px rgba(67, 182, 112, 0.12);
+          }
+          .chart-wrap {
+            border: 1px solid #1f5d3a;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #0a100d 0%, #060b08 100%);
+            padding: 8px;
+            box-shadow: inset 0 0 0 1px rgba(125, 255, 171, 0.08), 0 0 18px rgba(32, 122, 74, 0.18);
+          }
           .chart { width: 100%; height: 560px; margin-top: 6px; }
           .chart-small { width: 100%; height: 220px; margin-top: 10px; }
-          table { border-collapse: collapse; width: 100%; margin-top: 8px; background: #0f172a; }
-          th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: right; color: #d1d5db; }
-          th { background: #111827; color: #e5e7eb; }
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 8px;
+            background: #070d0a;
+            border: 1px solid #1f5d3a;
+          }
+          th, td { border: 1px solid #163927; padding: 6px 8px; text-align: right; color: #b4f7ce; }
+          th {
+            background: #0a1310;
+            color: #7dffae;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+          }
           th:first-child, td:first-child { text-align: left; }
-          .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; border:1px solid #334155; }
-          .tag-live { color:#34d399; border-color:#065f46; }
-          .tag-fallback { color:#fbbf24; border-color:#92400e; }
+          .tag {
+            display:inline-block;
+            padding:2px 8px;
+            border-radius:10px;
+            font-size:12px;
+            border:1px solid #225e3d;
+            background: rgba(4, 24, 12, 0.75);
+          }
+          .tag-live { color:#6fffaa; border-color:#2e8a57; box-shadow: 0 0 10px rgba(82, 255, 145, 0.25); }
+          .tag-fallback { color:#d4ffe6; border-color:#2f6b4a; }
         </style>
       </head>
       <body>
@@ -466,15 +508,15 @@ def home():
                 close: data.candles.close,
                 type: 'candlestick',
                 name: 'K線',
-                increasing: { line: { color: '#22c55e', width: 1 }, fillcolor: '#22c55e' },
-                decreasing: { line: { color: '#ef4444', width: 1 }, fillcolor: '#ef4444' }
+                increasing: { line: { color: '#71ffad', width: 1.2 }, fillcolor: '#71ffad' },
+                decreasing: { line: { color: '#2f8f5b', width: 1.1 }, fillcolor: '#2f8f5b' }
               },
               {
                 x,
                 y: data.indicators.ema_fast,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 1.4, color: '#60a5fa' },
+                line: { width: 1.5, color: '#8dffb2' },
                 name: 'EMA Fast'
               },
               {
@@ -482,7 +524,7 @@ def home():
                 y: data.indicators.ema_slow,
                 type: 'scatter',
                 mode: 'lines',
-                line: { width: 1.4, color: '#fbbf24' },
+                line: { width: 1.3, color: '#3ecf8e' },
                 name: 'EMA Slow'
               },
               {
@@ -498,7 +540,7 @@ def home():
                 y: data.entries.short.y,
                 type: 'scatter',
                 mode: 'markers',
-                marker: { color: '#ef4444', size: 9, symbol: 'triangle-down' },
+                marker: { color: '#2f8f5b', size: 9, symbol: 'triangle-down' },
                 name: 'Short Entry'
               },
               {
@@ -514,7 +556,7 @@ def home():
                 y: data.risk_lines.sl_y,
                 type: 'scatter',
                 mode: 'lines',
-                line: { color: '#f87171', width: 1, dash: 'dot' },
+                line: { color: '#66d698', width: 1, dash: 'dot' },
                 name: 'SL',
                 visible: 'legendonly'
               },
@@ -523,7 +565,7 @@ def home():
                 y: data.risk_lines.tp_y,
                 type: 'scatter',
                 mode: 'lines',
-                line: { color: '#34d399', width: 1, dash: 'dot' },
+                line: { color: '#8dffb2', width: 1, dash: 'dot' },
                 name: 'TP',
                 visible: 'legendonly'
               }
@@ -532,8 +574,8 @@ def home():
             Plotly.react('klineChart', traces, {
               template: 'plotly_dark',
               uirevision: 'kline-fixed',
-              paper_bgcolor: '#111827',
-              plot_bgcolor: '#111827',
+              paper_bgcolor: '#070d0a',
+              plot_bgcolor: '#070d0a',
               margin: { t: 18, r: 56, b: 28, l: 46 },
               hovermode: 'x',
               dragmode: 'pan',
@@ -541,26 +583,26 @@ def home():
                 type: 'date',
                 rangeslider: { visible: false },
                 showgrid: true,
-                gridcolor: '#1f2937',
-                color: '#9ca3af',
+                gridcolor: '#103321',
+                color: '#73d9a5',
                 tickformat: '%m-%d %H:%M',
                 showspikes: true,
                 spikemode: 'across',
-                spikecolor: '#6b7280',
+                spikecolor: '#4fb97e',
                 spikethickness: 1
               },
               yaxis: {
                 title: 'Price',
                 side: 'right',
                 showgrid: true,
-                gridcolor: '#1f2937',
-                color: '#9ca3af',
+                gridcolor: '#103321',
+                color: '#73d9a5',
                 showspikes: true,
                 spikemode: 'across',
-                spikecolor: '#6b7280',
+                spikecolor: '#4fb97e',
                 spikethickness: 1
               },
-              legend: { orientation: 'h', y: 1.04, font: { color: '#cbd5e1' } }
+              legend: { orientation: 'h', y: 1.04, font: { color: '#9cf7c3' } }
             }, {
               responsive: true,
               displaylogo: false,
@@ -573,20 +615,20 @@ def home():
               y: data.indicators.rsi,
               type: 'scatter',
               mode: 'lines',
-              line: { width: 1.5, color: '#a78bfa' },
+              line: { width: 1.5, color: '#6dff9f' },
               name: 'RSI'
             }], {
               template: 'plotly_dark',
               uirevision: 'rsi-fixed',
-              paper_bgcolor: '#111827',
-              plot_bgcolor: '#111827',
+              paper_bgcolor: '#070d0a',
+              plot_bgcolor: '#070d0a',
               margin: { t: 10, r: 56, b: 40, l: 46 },
               hovermode: 'x',
-              yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#1f2937', color: '#9ca3af' },
-              xaxis: { title: 'Time', type: 'date', tickformat: '%H:%M', gridcolor: '#1f2937', color: '#9ca3af' },
+              yaxis: { title: 'RSI', range: [0, 100], side: 'right', gridcolor: '#103321', color: '#73d9a5' },
+              xaxis: { title: 'Time', type: 'date', tickformat: '%H:%M', gridcolor: '#103321', color: '#73d9a5' },
               shapes: [
-                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#f97316', dash: 'dash' } },
-                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#22c55e', dash: 'dash' } }
+                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 70, y1: 70, line: { color: '#3f9b66', dash: 'dash' } },
+                { type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 30, y1: 30, line: { color: '#8dffb2', dash: 'dash' } }
               ],
               showlegend: false
             }, { responsive: true, displaylogo: false });
