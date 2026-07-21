@@ -3,7 +3,7 @@ import numpy as np
 from typing import List
 
 class SignalGenerator:
-    """Scalping signal generator with EMA/RSI entries and ATR-based SL/TP.
+    """Scalping signal generator with EMA/RSI entries and ATR + key-level SL/TP.
 
     Features:
     - EMA crossover + RSI threshold for entries
@@ -12,16 +12,20 @@ class SignalGenerator:
     - simulate_trades to run a simple first-touch backtest
     """
 
-    def __init__(self,
-                 ema_fast=5,
-                 ema_slow=20,
-                 rsi_period=14,
-                 rsi_long=60,
-                 rsi_exit=80,
-                 atr_period=14,
-                 sl_atr=1.5,
-                 tp_atr=3.0,
-                 max_holding_bars=240):
+    def __init__(
+        self,
+        ema_fast=5,
+        ema_slow=20,
+        rsi_period=14,
+        rsi_long=60,
+        rsi_exit=80,
+        atr_period=14,
+        sl_atr=1.5,
+        tp_atr=3.0,
+        max_holding_bars=240,
+        key_lookback=120,
+        key_buffer_atr=0.2,
+    ):
         self.ema_fast = ema_fast
         self.ema_slow = ema_slow
         self.rsi_period = rsi_period
@@ -31,6 +35,8 @@ class SignalGenerator:
         self.sl_atr = sl_atr
         self.tp_atr = tp_atr
         self.max_holding_bars = max_holding_bars
+        self.key_lookback = key_lookback
+        self.key_buffer_atr = key_buffer_atr
 
     def compute_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         price = df['close']
@@ -53,6 +59,46 @@ class SignalGenerator:
         df['atr'] = df['tr'].rolling(self.atr_period, min_periods=1).mean()
 
         return df
+
+    def _find_key_levels(self, df: pd.DataFrame, i: int, entry_price: float):
+        if i <= 2:
+            return None, None
+
+        start = max(0, i - self.key_lookback)
+        window = df.iloc[start:i].copy()
+        if len(window) < 5:
+            return None, None
+
+        if 'high' not in window.columns:
+            window['high'] = window['close']
+        if 'low' not in window.columns:
+            window['low'] = window['close']
+
+        # Simple local pivots (1-bar neighborhood)
+        pivot_lows = window[(window['low'].shift(1) > window['low']) & (window['low'].shift(-1) > window['low'])]['low']
+        pivot_highs = window[(window['high'].shift(1) < window['high']) & (window['high'].shift(-1) < window['high'])]['high']
+
+        support = None
+        resistance = None
+
+        lows_below = pivot_lows[pivot_lows < entry_price]
+        highs_above = pivot_highs[pivot_highs > entry_price]
+        if len(lows_below) > 0:
+            support = float(lows_below.max())
+        if len(highs_above) > 0:
+            resistance = float(highs_above.min())
+
+        # Fallback quantile keys when pivots are sparse
+        if support is None:
+            q_low = window['low'].quantile(0.25)
+            if q_low < entry_price:
+                support = float(q_low)
+        if resistance is None:
+            q_high = window['high'].quantile(0.75)
+            if q_high > entry_price:
+                resistance = float(q_high)
+
+        return support, resistance
 
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         """Return dataframe with indicators and 'signal' column: 1 long entry, -1 short entry, 0 neutral/exit."""
@@ -90,7 +136,6 @@ class SignalGenerator:
 
         Returns a DataFrame of trades with columns: side, entry_idx, exit_idx, entry_price, exit_price, pnl, return
         """
-        df = self.compute_indicators(df)
         signals = self.generate_signals(df)
         trades: List[dict] = []
 
@@ -111,16 +156,46 @@ class SignalGenerator:
                 position = 'long'
                 entry_idx = signals.index[i]
                 entry_price = price
-                sl = entry_price - self.sl_atr * atr
-                tp = entry_price + self.tp_atr * atr
+                atr_sl = entry_price - self.sl_atr * atr
+                atr_tp = entry_price + self.tp_atr * atr
+                support, resistance = self._find_key_levels(signals, i, entry_price)
+
+                if support is not None:
+                    sl = min(atr_sl, support - self.key_buffer_atr * atr)
+                    sl_source = 'key_level'
+                else:
+                    sl = atr_sl
+                    sl_source = 'atr'
+
+                if resistance is not None and resistance > entry_price:
+                    tp = max(atr_tp * 0.7 + entry_price * 0.3, resistance)
+                    tp_source = 'key_level'
+                else:
+                    tp = atr_tp
+                    tp_source = 'atr'
                 hold_counter = 0
                 continue
             if position is None and row['signal'] == -1:
                 position = 'short'
                 entry_idx = signals.index[i]
                 entry_price = price
-                sl = entry_price + self.sl_atr * atr
-                tp = entry_price - self.tp_atr * atr
+                atr_sl = entry_price + self.sl_atr * atr
+                atr_tp = entry_price - self.tp_atr * atr
+                support, resistance = self._find_key_levels(signals, i, entry_price)
+
+                if resistance is not None:
+                    sl = max(atr_sl, resistance + self.key_buffer_atr * atr)
+                    sl_source = 'key_level'
+                else:
+                    sl = atr_sl
+                    sl_source = 'atr'
+
+                if support is not None and support < entry_price:
+                    tp = min(atr_tp * 0.7 + entry_price * 0.3, support)
+                    tp_source = 'key_level'
+                else:
+                    tp = atr_tp
+                    tp_source = 'atr'
                 hold_counter = 0
                 continue
 
@@ -148,6 +223,7 @@ class SignalGenerator:
                 trades.append({'side': 'long', 'entry_idx': entry_idx, 'exit_idx': signals.index[i],
                                'entry_price': entry_price, 'exit_price': exit_price,
                                'sl_price': sl, 'tp_price': tp,
+                               'sl_source': sl_source, 'tp_source': tp_source,
                                'exit_reason': exit_reason,
                                'pnl': pnl, 'return': ret})
                 position = None
@@ -178,6 +254,7 @@ class SignalGenerator:
                 trades.append({'side': 'short', 'entry_idx': entry_idx, 'exit_idx': signals.index[i],
                                'entry_price': entry_price, 'exit_price': exit_price,
                                'sl_price': sl, 'tp_price': tp,
+                               'sl_source': sl_source, 'tp_source': tp_source,
                                'exit_reason': exit_reason,
                                'pnl': pnl, 'return': ret})
                 position = None
