@@ -62,7 +62,6 @@ def _extract_records(payload: Any) -> list[Any]:
 
 def _parse_timestamp(raw: Any) -> pd.Timestamp:
     if isinstance(raw, (int, float)):
-        # ms timestamp vs sec timestamp
         unit = "ms" if raw > 1_000_000_000_000 else "s"
         return pd.to_datetime(raw, unit=unit, utc=True).tz_convert(None)
     return pd.to_datetime(raw, utc=True).tz_convert(None)
@@ -111,41 +110,118 @@ def _normalize_records(records: list[Any]) -> pd.DataFrame:
     return df.set_index("time")
 
 
+def _candidate_tokens() -> list[str]:
+    tokens: list[str] = []
+    for env_name in (
+        "MINISHARE_TOKEN_INDEX_MINUTE_HISTORY",
+        "MINISHARE_TOKEN_INDEX_MINUTE_REALTIME",
+        "MINISHARE_TOKEN_US_REALTIME",
+        "MINISHARE_TOKEN_US_DAILY",
+        "MINISHARE_TOKEN",
+    ):
+        value = os.getenv(env_name, "").strip()
+        if value:
+            tokens.append(value)
+
+    extra = os.getenv("MINISHARE_TOKENS", "").strip()
+    if extra:
+        for part in extra.split(","):
+            value = part.strip()
+            if value:
+                tokens.append(value)
+
+    deduped: list[str] = []
+    seen = set()
+    for token in tokens:
+        if token not in seen:
+            seen.add(token)
+            deduped.append(token)
+    return deduped
+
+
+def _candidate_paths() -> list[str]:
+    paths: list[str] = []
+    primary = os.getenv("MINISHARE_BARS_PATH", "/api/v1/market/bars").strip()
+    if primary:
+        paths.append(primary if primary.startswith("/") else f"/{primary}")
+
+    extra_paths = os.getenv("MINISHARE_BARS_PATHS", "").strip()
+    if extra_paths:
+        for part in extra_paths.split(","):
+            value = part.strip()
+            if value:
+                paths.append(value if value.startswith("/") else f"/{value}")
+
+    deduped: list[str] = []
+    seen = set()
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            deduped.append(path)
+    return deduped
+
+
 def _fetch_minishare_ohlc() -> tuple[pd.DataFrame, dict[str, str]]:
     base_url = os.getenv("MINISHARE_BASE_URL", "").strip().rstrip("/")
-    token = os.getenv("MINISHARE_TOKEN", "").strip()
+    tokens = _candidate_tokens()
+    paths = _candidate_paths()
     if not base_url:
         raise ValueError("MINISHARE_BASE_URL is not set")
-    if not token:
-        raise ValueError("MINISHARE_TOKEN is not set")
+    if not tokens:
+        raise ValueError("No minishare token found (set MINISHARE_TOKEN or MINISHARE_TOKENS)")
+    if not paths:
+        raise ValueError("No minishare bars path found")
 
     symbol = os.getenv("MINISHARE_SYMBOL", "QQQ.US")
     interval = os.getenv("MINISHARE_INTERVAL", "1m")
     limit = _env_int("MINISHARE_LIMIT", 400)
-    path = os.getenv("MINISHARE_BARS_PATH", "/api/v1/market/bars")
     query = urlencode({"symbol": symbol, "interval": interval, "limit": limit})
-    url = f"{base_url}{path}?{query}"
 
-    request = Request(
-        url=url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "X-API-Key": token,
-            "Accept": "application/json",
-        },
-        method="GET",
-    )
+    errors: list[str] = []
+    for path in paths:
+        url = f"{base_url}{path}?{query}"
+        for idx, token in enumerate(tokens):
+            request = Request(
+                url=url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-API-Key": token,
+                    "Accept": "application/json",
+                },
+                method="GET",
+            )
+            try:
+                with urlopen(request, timeout=10) as response:
+                    body = response.read().decode("utf-8")
+                payload = json.loads(body)
+                records = _extract_records(payload)
+                df = _normalize_records(records)
+                return df, {
+                    "source": "minishare",
+                    "symbol": symbol,
+                    "interval": interval,
+                    "path": path,
+                    "token_index": str(idx + 1),
+                    "message": "",
+                }
+            except HTTPError as err:
+                errors.append(f"{path}#k{idx + 1}:HTTP{err.code}")
+            except (URLError, json.JSONDecodeError, ValueError, TypeError) as err:
+                errors.append(f"{path}#k{idx + 1}:{type(err).__name__}")
 
-    with urlopen(request, timeout=10) as response:
-        body = response.read().decode("utf-8")
-    payload = json.loads(body)
-    records = _extract_records(payload)
-    df = _normalize_records(records)
-    return df, {"source": "minishare", "symbol": symbol, "interval": interval}
+    joined = "; ".join(errors[:8])
+    raise ValueError(f"All minishare key/path attempts failed: {joined}")
 
 
 def _build_snapshot():
-    source_info = {"source": "demo", "symbol": "QQQ.US", "interval": "1m", "message": ""}
+    source_info = {
+        "source": "demo",
+        "symbol": "QQQ.US",
+        "interval": "1m",
+        "path": "",
+        "token_index": "",
+        "message": "",
+    }
     use_live = _env_bool("USE_LIVE_DATA", True)
 
     if use_live:
@@ -184,6 +260,8 @@ def _build_snapshot():
         "data_source": source_info["source"],
         "symbol": source_info["symbol"],
         "interval": source_info["interval"],
+        "path": source_info["path"],
+        "token_index": source_info["token_index"],
         "source_message": source_info["message"],
     }
     return summary, signals, trades
@@ -349,7 +427,9 @@ def home():
 
             const s = data.summary;
             const sourceTag = document.getElementById('sourceTag');
-            const sourceLabel = `${s.data_source} (${s.symbol}, ${s.interval})`;
+            const pathInfo = s.path ? ` ${s.path}` : '';
+            const keyInfo = s.token_index ? ` #key${s.token_index}` : '';
+            const sourceLabel = `${s.data_source}${keyInfo} (${s.symbol}, ${s.interval})${pathInfo}`;
             sourceTag.innerText = sourceLabel;
             sourceTag.className = "tag " + (s.data_source === "minishare" ? "tag-live" : "tag-fallback");
             document.getElementById('sourceMessage').innerText = s.source_message || "";

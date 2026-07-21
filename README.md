@@ -23,15 +23,22 @@ Set env before starting web app:
 
 MINISHARE_BASE_URL=<your-minishare-api-base-url>
 MINISHARE_TOKEN=<your-token>
+MINISHARE_TOKENS=<token1,token2,token3>
+MINISHARE_TOKEN_INDEX_MINUTE_HISTORY=<optional-priority-token>
+MINISHARE_TOKEN_INDEX_MINUTE_REALTIME=<optional-priority-token>
+MINISHARE_TOKEN_US_REALTIME=<optional-priority-token>
+MINISHARE_TOKEN_US_DAILY=<optional-priority-token>
 MINISHARE_SYMBOL=QQQ.US
 MINISHARE_INTERVAL=1m
 MINISHARE_LIMIT=400
 MINISHARE_BARS_PATH=/api/v1/market/bars
+MINISHARE_BARS_PATHS=/api/v1/market/bars,/api/v1/quote/minute
 USE_LIVE_DATA=true
 
 Notes:
 - Web app reads minishare first. If API fails, it falls back to demo data and shows reason in page.
 - If your minishare endpoint path/query is different, update MINISHARE_BARS_PATH and keep symbol/interval/limit env values aligned with your API.
+- Multi-key auto-switch is enabled: the app tries keys in order and uses the first one that succeeds.
 
 Continuous Integration
 
