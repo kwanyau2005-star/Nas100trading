@@ -1,0 +1,4 @@
+minishare
+pandas
+requests
+python-dotenv
