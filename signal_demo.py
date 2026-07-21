@@ -30,6 +30,7 @@ if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
 api = None
 
 def get_api():
+    """Lazily create and return the minishare API client."""
     global api
     if api is not None:
         return api
