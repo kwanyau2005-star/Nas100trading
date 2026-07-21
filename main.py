@@ -10,7 +10,7 @@ def generate_synthetic_prices(n=500, start=100.0, seed=42):
     np.random.seed(seed)
     steps = np.random.normal(loc=0.0, scale=0.5, size=n)
     price = start + np.cumsum(steps)
-    idx = pd.date_range(end=pd.Timestamp.now(), periods=n, freq='T')
+    idx = pd.date_range(end=pd.Timestamp.now(), periods=n, freq='min')
     return pd.DataFrame({'close': price}, index=idx)
 
 
