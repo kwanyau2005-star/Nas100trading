@@ -28,6 +28,20 @@ Use itick futures data source
    - main.py will fetch klines from itick and feed them into SignalGenerator.
    - if DATA_SOURCE is not `itick`, it falls back to demo synthetic prices.
 
+Use Tradovate futures data source
+
+1) Copy env template and fill your credentials/settings:
+   cp .env.example .env
+2) Set:
+   - DATA_SOURCE=tradovate
+   - TRADOVATE_USERNAME / TRADOVATE_PASSWORD (or TRADOVATE_ACCESS_TOKEN)
+   - TRADOVATE_BASE_URL (demo or live), TRADOVATE_AUTH_ENDPOINT, TRADOVATE_CHART_ENDPOINT
+   - TRADOVATE_SYMBOL / TRADOVATE_INTERVAL / TRADOVATE_LIMIT
+3) Run:
+   python main.py
+   - main.py will authenticate with Tradovate, fetch candles, and feed them into SignalGenerator.
+   - if DATA_SOURCE is not `tradovate` or `itick`, it falls back to demo synthetic prices.
+
 Continuous Integration
 
 - A GitHub Actions workflow (/.github/workflows/ci.yml) runs pytest on pull requests and pushes to main.

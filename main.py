@@ -1,8 +1,9 @@
 """Quick runner for the scalping SignalGenerator.
 
-Supports two data sources:
+Supports three data sources:
 - demo: synthetic random-walk prices (default)
 - itick: remote futures klines from configured itick endpoint
+- tradovate: remote futures candles via Tradovate API
 """
 import os
 import pandas as pd
@@ -11,6 +12,7 @@ from dotenv import load_dotenv
 
 from itick_api import ItickAPI, ItickAPIError
 from signal_generator import SignalGenerator
+from tradovate_api import TradovateAPI, TradovateAPIError
 
 
 def generate_synthetic_prices(n=500, start=100.0, seed=42):
@@ -29,6 +31,12 @@ def load_prices():
         interval = os.getenv('ITICK_INTERVAL', '1m')
         limit = int(os.getenv('ITICK_LIMIT', '500'))
         return api.fetch_klines(symbol=symbol, interval=interval, limit=limit), source
+    if source == 'tradovate':
+        api = TradovateAPI.from_env()
+        symbol = os.getenv('TRADOVATE_SYMBOL', 'MNQ')
+        interval = os.getenv('TRADOVATE_INTERVAL', '1m')
+        limit = int(os.getenv('TRADOVATE_LIMIT', '500'))
+        return api.fetch_klines(symbol=symbol, interval=interval, limit=limit), source
     return generate_synthetic_prices(), 'demo'
 
 
@@ -36,8 +44,8 @@ def run_demo():
     load_dotenv()
     try:
         df, source = load_prices()
-    except ItickAPIError as exc:
-        raise SystemExit(f'Failed to load itick data: {exc}') from exc
+    except (ItickAPIError, TradovateAPIError) as exc:
+        raise SystemExit(f'Failed to load market data: {exc}') from exc
 
     sg = SignalGenerator(ema_fast=5, ema_slow=20, rsi_period=14, rsi_long=60, rsi_exit=80)
     out = sg.generate_signals(df)
