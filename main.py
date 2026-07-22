@@ -10,7 +10,7 @@ import numpy as np
 from dotenv import load_dotenv
 
 from itick_api import ItickAPI, ItickAPIError
-from signal import SignalGenerator
+from signal_generator import SignalGenerator
 
 
 def generate_synthetic_prices(n=500, start=100.0, seed=42):
