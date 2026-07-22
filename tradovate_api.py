@@ -46,13 +46,12 @@ class TradovateAPI:
 
     @classmethod
     def from_env(cls) -> "TradovateAPI":
-        pwd_env_key = "TRADOVATE_" + "PASSWORD"
         return cls(
-            base_url=os.getenv("TRADOVATE_BASE_URL", "https://demo-api.tradovate.com"),
-            auth_endpoint=os.getenv("TRADOVATE_AUTH_ENDPOINT", "/v1/auth/accesstokenrequest"),
-            chart_endpoint=os.getenv("TRADOVATE_CHART_ENDPOINT", "/md/getchart"),
-            username=os.getenv("TRADOVATE_USERNAME"),
-            os.getenv(pwd_env_key),
+            os.getenv("TRADOVATE_BASE_URL", "https://demo-api.tradovate.com"),
+            os.getenv("TRADOVATE_AUTH_ENDPOINT", "/v1/auth/accesstokenrequest"),
+            os.getenv("TRADOVATE_CHART_ENDPOINT", "/md/getchart"),
+            os.getenv("TRADOVATE_USERNAME"),
+            os.getenv("TRADOVATE_PASSWORD"),
             app_id=os.getenv("TRADOVATE_APP_ID"),
             app_version=os.getenv("TRADOVATE_APP_VERSION"),
             cid=os.getenv("TRADOVATE_CID"),
@@ -87,12 +86,15 @@ class TradovateAPI:
 
     @staticmethod
     def _parse_interval(interval: str) -> int:
-        text = (interval or "1m").strip().lower()
+        text = str(interval or "1m").strip().lower()
         if text.endswith("m"):
             text = text[:-1]
-        minutes = int(text)
+        try:
+            minutes = int(text)
+        except ValueError as exc:
+            raise TradovateAPIError("Tradovate interval numeric value is invalid (examples: '1m', '5m').") from exc
         if minutes <= 0:
-            raise ValueError
+            raise TradovateAPIError("Tradovate interval must be greater than zero.")
         return minutes
 
     def _get_access_token(self) -> str:
@@ -120,10 +122,7 @@ class TradovateAPI:
     def fetch_klines(self, symbol: str, interval: str = "1m", limit: int = 500) -> pd.DataFrame:
         if not symbol:
             raise TradovateAPIError("Tradovate symbol is required.")
-        try:
-            minutes = self._parse_interval(interval)
-        except (TypeError, ValueError) as exc:
-            raise TradovateAPIError("Tradovate interval must be like '1m', '5m'.") from exc
+        minutes = self._parse_interval(interval)
 
         token = self._get_access_token()
         payload = {

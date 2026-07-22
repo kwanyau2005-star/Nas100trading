@@ -29,11 +29,11 @@ def test_fetch_klines_auth_then_chart_normalizes_close():
         ]
     }
     api = TradovateAPI(
-        base_url="https://demo-api.tradovate.com",
-        auth_endpoint="/v1/auth/accesstokenrequest",
-        chart_endpoint="/md/getchart",
-        username="user",
-        **{"password": "pw123"},
+        "https://demo-api.tradovate.com",
+        "/v1/auth/accesstokenrequest",
+        "/md/getchart",
+        "user",
+        "pw123",
     )
 
     with patch("tradovate_api.urlopen", side_effect=[_FakeResponse(auth_payload), _FakeResponse(chart_payload)]):
