@@ -1,15 +1,14 @@
 import json
+import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Protocol, Tuple
 from urllib.error import URLError, HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import pandas as pd
-
-from signal import SignalGenerator
 
 
 def _to_datetime(value) -> pd.Timestamp:
@@ -30,12 +29,14 @@ class DeepchartsNQFeed:
         interval: str = "1m",
         timeout: int = 10,
         retries: int = 3,
+        retry_delay_seconds: float = 1.0,
     ):
         self.base_url = base_url
         self.symbol = symbol
         self.interval = interval
         self.timeout = timeout
         self.retries = retries
+        self.retry_delay_seconds = retry_delay_seconds
 
     def fetch_latest(self, limit: int = 300) -> pd.DataFrame:
         params = urlencode(
@@ -51,7 +52,7 @@ class DeepchartsNQFeed:
                 return self._parse_payload(payload)
             except (HTTPError, URLError, TimeoutError, ValueError) as exc:
                 last_error = exc
-                time.sleep(1)
+                time.sleep(self.retry_delay_seconds)
         raise RuntimeError(f"Unable to fetch K-lines from Deepcharts endpoint: {last_error}")
 
     def _parse_payload(self, payload) -> pd.DataFrame:
@@ -156,17 +157,36 @@ class TelegramNotifier:
         try:
             with urlopen(req, timeout=10):
                 return True
-        except Exception:
+        except Exception as exc:
+            logging.warning("Telegram send failed: %s", exc)
             return False
+
+    def is_configured(self) -> bool:
+        return bool(self.token and self.chat_id)
+
+
+class FeedLike(Protocol):
+    def fetch_latest(self, limit: int) -> pd.DataFrame:
+        ...
+
+
+class SignalGeneratorLike(Protocol):
+    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
+        ...
+
+
+class NotifierLike(Protocol):
+    def send(self, message: str) -> bool:
+        ...
 
 
 class RealtimeSignalMonitor:
     def __init__(
         self,
-        feed: DeepchartsNQFeed,
-        signal_generator: SignalGenerator,
+        feed: FeedLike,
+        signal_generator: SignalGeneratorLike,
         risk_manager: PropFirmRiskManager,
-        notifier: Optional[TelegramNotifier] = None,
+        notifier: Optional[NotifierLike] = None,
         lookback: int = 300,
     ):
         self.feed = feed
@@ -176,11 +196,12 @@ class RealtimeSignalMonitor:
         self.lookback = lookback
         self.last_closed_ts = None
 
-    def run_once(self):
+    def run_once(self) -> Optional[Dict[str, Any]]:
+        """Process the latest closed candle once and return the resulting event."""
         candles = self.feed.fetch_latest(self.lookback)
         if candles.empty:
             return None
-        closed = candles[candles["is_closed"] == True]
+        closed = candles[candles["is_closed"]]
         if closed.empty:
             return None
 
@@ -191,7 +212,12 @@ class RealtimeSignalMonitor:
         signal_df = self.signal_generator.generate_signals(closed[["close"]])
         latest = signal_df.iloc[-1]
         signal = int(latest["signal"])
-        event = {"timestamp": latest_ts.isoformat(), "signal": signal, "price": float(latest["close"])}
+        event = {
+            "timestamp": latest_ts.isoformat(),
+            "signal": signal,
+            "price": float(latest["close"]),
+            "status": "no_signal",
+        }
 
         if signal == 1:
             allowed, reason = self.risk_manager.can_open_long()
@@ -211,5 +237,8 @@ class RealtimeSignalMonitor:
 
     def run_forever(self, poll_seconds: int = 5):
         while True:
-            self.run_once()
+            try:
+                self.run_once()
+            except Exception as exc:
+                logging.warning("Realtime monitor poll failed: %s", exc)
             time.sleep(poll_seconds)

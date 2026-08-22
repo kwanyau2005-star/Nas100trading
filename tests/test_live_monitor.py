@@ -40,11 +40,13 @@ def _closed_candle_frame():
 
 
 def test_monitor_triggers_buy_once_per_closed_candle():
+    risk = PropFirmRiskManager()
+    notifier = DummyNotifier()
     monitor = RealtimeSignalMonitor(
         feed=DummyFeed(_closed_candle_frame()),
         signal_generator=DummySignalGenerator(),
-        risk_manager=PropFirmRiskManager(),
-        notifier=DummyNotifier(),
+        risk_manager=risk,
+        notifier=notifier,
     )
 
     first = monitor.run_once()
@@ -53,6 +55,8 @@ def test_monitor_triggers_buy_once_per_closed_candle():
     assert first is not None
     assert first["signal"] == 1
     assert first["status"] == "triggered"
+    assert risk.open_positions == 1
+    assert len(notifier.messages) == 1
     assert second is None
 
 
@@ -65,3 +69,21 @@ def test_risk_manager_blocks_buy_after_daily_loss_limit():
     allowed, reason = risk.can_open_long(now=datetime(2026, 1, 1, tzinfo=timezone.utc))
     assert allowed is False
     assert reason == "Daily loss limit reached"
+
+
+def test_monitor_marks_signal_as_blocked_when_risk_rejects():
+    rules = PropFirmRiskRules(max_daily_loss=10000, max_drawdown=100, max_positions=1)
+    risk = PropFirmRiskManager(rules=rules, starting_equity=100000)
+    risk.update_equity(99800)
+    notifier = DummyNotifier()
+    monitor = RealtimeSignalMonitor(
+        feed=DummyFeed(_closed_candle_frame()),
+        signal_generator=DummySignalGenerator(),
+        risk_manager=risk,
+        notifier=notifier,
+    )
+
+    event = monitor.run_once()
+    assert event["status"] == "blocked"
+    assert event["reason"] == "Max drawdown reached"
+    assert len(notifier.messages) == 1

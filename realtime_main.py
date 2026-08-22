@@ -44,6 +44,8 @@ def build_monitor_from_env() -> RealtimeSignalMonitor:
         token=os.getenv("TELEGRAM_TOKEN"),
         chat_id=os.getenv("TELEGRAM_CHAT_ID"),
     )
+    if not notifier.is_configured():
+        print("Warning: Telegram notifications are disabled (missing TELEGRAM_TOKEN/TELEGRAM_CHAT_ID).")
     return RealtimeSignalMonitor(
         feed=feed,
         signal_generator=signal_generator,
