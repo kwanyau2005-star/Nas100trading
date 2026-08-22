@@ -13,6 +13,10 @@ Quick start
    - outputs signals.csv and prints summary
 4) Run tests:
    pytest -q
+5) Run realtime NQ monitor:
+   python realtime_main.py
+   - requires DEEPCHARTS_KLINE_URL in .env
+   - sends Telegram alert when a buy signal is triggered
 
 Continuous Integration
 
@@ -21,3 +25,4 @@ Continuous Integration
 Notes
 - This is a test/demo implementation. Replace data source with real market data before live use.
 - Keep secrets out of the repo; use .env and .env.example as templates.
+- Risk controls enforce max daily loss, max drawdown, and max concurrent positions for prop-firm style rules.
